@@ -8,6 +8,7 @@ library(multtest)
 library(metap)
 library(gridExtra)
 library(harmony)
+library(grid)
 
 
 #process and scale data at once
@@ -138,7 +139,7 @@ ggsave(filename = "subset_5/integrated/umap_plot.png", plot = umap_plot)
 
 #Identify cell types
 DefaultAssay(cid_integrated) <- "integrated"
-cid_integrated <- FindNeighbors(cid_integrated, dims = 1:15)
+cid_integrated <- FindNeighbors(cid_integrated, dims = 1:10)
 cid_integrated <- FindClusters(cid_integrated, resolution = 0.4, algorithm = 2)
 umap_plot <- DimPlot(cid_integrated, reduction = "umap", label = TRUE)
 ggsave(filename = "subset_5/integrated/cluster_louvain2_plot.png", plot = umap_plot)
@@ -160,14 +161,32 @@ all_markers <- FindAllMarkers(cid_integrated, only.pos = TRUE, min.pct = 0.25, l
 top.markers <- all_markers %>% group_by(cluster) %>% slice_max(n = 1, order_by = avg_log2FC) %>% pull(gene)
 top_markers_plot <- FeaturePlot(cid_integrated, features = top.markers, reduction = "umap")
 ggsave(filename = "subset_5/integrated/top_marker_cluster.png", plot = top_markers_plot)
-
+new_cluster_ids <- c("Langerhans cells", "Monocytes", "Stromal cells", "NK-cells", "Grandular cells",
+                     "Macrophages", "Myoepithelial cells", "Myocytes", "Adipocytes|Endothelial cells", "B-cells", "Plasma cells", "Platelates")
+names(new_cluster_ids) <- levels(cid_integrated)
+cid_integrated <- RenameIdents(cid_integrated, new_cluster_ids)
+cluster_annotation <- DimPlot(cid_integrated, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
+ggsave(filename = "subset_5/integrated/cluster_annotation_plot.png", plot = cluster_annotation)
+batch_tabulation <- table(Cluster = cid_integrated@active.ident, Batch = cid_integrated$orig.ident)
+png("subset_5/integrated/batch_tabulation_table.png")
+grid.table(batch_tabulation)
+dev.off()
+#DEG
+cid_integrated[["cell_labels"]] <- cid_integrated@active.ident
+cid_3586_vs_3838 <- FindMarkers(cid_integrated, assay = "SCT", ident.1 = "CID3586", ident.2 = "CID3838", group.by = "orig.ident", min.pct = 0.5)
+head(cid_3586_vs_3838)
+cid_integrated <- SetIdent(cid_integrated, value = "orig.ident")
+f1 <- FeaturePlot(subset(cid_integrated, idents = c("CID3586")), features = c("SFRP4"))
+f2 <- FeaturePlot(subset(cid_integrated, idents = c("CID3838")), features = c("SFRP4"))
+plot <- f1 + f2
+ggsave(filename = "subset_5/integrated/myoepithelial_CID_3586_vs_3838.png", plot = plot)
 
 #find what makes similar cells different from each other
-join_layers_cid <- JoinLayers(cluster_harmony_cid)
-c11_markers <- FindMarkers(join_layers_cid, ident.1 = 11)
+#join_layers_cid <- JoinLayers(cluster_harmony_cid)
+#c11_markers <- FindMarkers(join_layers_cid, ident.1 = 11)
 
 
-
+###
 
 
 
