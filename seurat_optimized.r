@@ -161,9 +161,11 @@ all_markers <- FindAllMarkers(cid_integrated, only.pos = TRUE, min.pct = 0.25, l
 top.markers <- all_markers %>% group_by(cluster) %>% slice_max(n = 1, order_by = avg_log2FC) %>% pull(gene)
 top_markers_plot <- FeaturePlot(cid_integrated, features = top.markers, reduction = "umap")
 ggsave(filename = "subset_5/integrated/top_marker_cluster.png", plot = top_markers_plot)
-new_cluster_ids <- c("Langerhans cells", "Monocytes", "Stromal cells", "NK-cells", "Grandular cells",
-                     "Macrophages", "Myoepithelial cells", "Myocytes", "Adipocytes|Endothelial cells", "B-cells", "Plasma cells", "Platelates")
+new_cluster_ids <- c("T-cells", "Dendric cells", "Endometrial stromal cells", "NK-cells", "Basal cells",
+                     "Macrophages", "Fibroblast", "smooth muscles", "Endothelial cells", "B-cells", "Plasma cells", "Platelates")
 names(new_cluster_ids) <- levels(cid_integrated)
+#names(new_cluster_ids) <- NULL
+#cid_integrated <- NULL
 cid_integrated <- RenameIdents(cid_integrated, new_cluster_ids)
 cluster_annotation <- DimPlot(cid_integrated, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
 ggsave(filename = "subset_5/integrated/cluster_annotation_plot.png", plot = cluster_annotation)
@@ -181,17 +183,25 @@ f2 <- FeaturePlot(subset(cid_integrated, idents = c("CID3838")), features = c("S
 plot <- f1 + f2
 ggsave(filename = "subset_5/integrated/myoepithelial_CID_3586_vs_3838.png", plot = plot)
 
-#find what makes similar cells different from each other
-#join_layers_cid <- JoinLayers(cluster_harmony_cid)
-#c11_markers <- FindMarkers(join_layers_cid, ident.1 = 11)
+#Aggregate counts into pseudo-bulk for xcell cell type enrichment analysis
+DefaultAssay(cid_integrated) <- "RNA"
+gene_expression <- as.data.frame(GetAssayData(cid_integrated, assay = "RNA"))
+write.table(gene_expression, "gene_expression_data.txt", sep = "\t", row.names = TRUE, col.names = NA, quote = FALSE)
+
+
+
+
+
+
 
 
 ###
 
 
 
-
-
+#find what makes similar cells different from each other
+#join_layers_cid <- JoinLayers(cluster_harmony_cid)
+#c11_markers <- FindMarkers(join_layers_cid, ident.1 = 11)
 
 
 
