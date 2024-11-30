@@ -9,6 +9,11 @@ library(metap)
 library(gridExtra)
 library(harmony)
 library(grid)
+library(patchwork)
+library(infercnv)
+library(future)
+plan("multisession", workers = 10)
+library(ggplot2)
 
 
 #process and scale data at once
@@ -175,33 +180,90 @@ grid.table(batch_tabulation)
 dev.off()
 #DEG
 cid_integrated[["cell_labels"]] <- cid_integrated@active.ident
-cid_3586_vs_3838 <- FindMarkers(cid_integrated, assay = "SCT", ident.1 = "CID3586", ident.2 = "CID3838", group.by = "orig.ident", min.pct = 0.5)
-head(cid_3586_vs_3838)
+cid_3586_vs_3946 <- FindMarkers(cid_integrated, assay = "SCT", ident.1 = "CID3586", ident.5 = "CID3946", group.by = "orig.ident", min.pct = 0.5)
+head(cid_3586_vs_3946)
 cid_integrated <- SetIdent(cid_integrated, value = "orig.ident")
-f1 <- FeaturePlot(subset(cid_integrated, idents = c("CID3586")), features = c("SFRP4"))
-f2 <- FeaturePlot(subset(cid_integrated, idents = c("CID3838")), features = c("SFRP4"))
+f1 <- FeaturePlot(subset(cid_integrated, idents = c("CID3586")), features = c("CXCL13")) + ggtitle("Sample: CID3586, Marker: CXCL13")
+f2 <- FeaturePlot(subset(cid_integrated, idents = c("CID3946")), features = c("CXCL13")) + ggtitle("Sample: CID3946, Marker: CXCL13")
 plot <- f1 + f2
-ggsave(filename = "subset_5/integrated/myoepithelial_CID_3586_vs_3838.png", plot = plot)
-
-#Aggregate counts into pseudo-bulk for xcell cell type enrichment analysis
-DefaultAssay(cid_integrated) <- "RNA"
-gene_expression <- as.data.frame(GetAssayData(cid_integrated, assay = "RNA"))
-write.table(gene_expression, "gene_expression_data.txt", sep = "\t", row.names = TRUE, col.names = NA, quote = FALSE)
+ggsave(filename = "subset_5/integrated/endometrial_CID_3586_vs_3946.png", plot = plot)
 
 
+#annotate inferCNV file text
+infercnv_file <- data.frame(cell = colnames(cid_integrated), group = "unknown")
+write.table(infercnv_file, file = "infercnv_file.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+#get expresion matrix for infercnv
+expr_matrix <- GetAssayData(cid_integrated, layer = "counts")
+write.table(as.matrix(expr_matrix), file = "expresion_matrix.txt", sep = "\t", quote = FALSE, row.names = TRUE, col.names = TRUE)
+# create the infercnv object
+infercnv_obj = CreateInfercnvObject(raw_counts_matrix="data/expresion_matrix.txt",
+                                    annotations_file="data/infercnv_file.txt",
+                                    delim="\t",
+                                    gene_order_file="data/hg38_gencode_v27.txt",
+                                    ref_group_names=c("unknown"))
+# perform infercnv operations to reveal cnv signal
+infercnv_obj = infercnv::run(infercnv_obj,
+                             cutoff = 0.1,  # use 1 for smart-seq, 0.1 for 10x-genomics
+                             out_dir="subset_5", 
+                             cluster_by_groups = T,   # cluster
+                             denoise = T,
+                             HMM = T
+                             )
 
-
-
-
-
-
+                        
+#spatial transcriptomics
+dir = "filtered_feature_bc_matrix"
+library(hdf5r)
+library(Matrix)
+library(rhdf5)
+library(DropletUtils)
+filter_matrix <- ReadMtx(
+        mtx = paste0(dir, "/matrix.mtx.gz"), 
+        features = paste0(dir, "/features.tsv.gz"), 
+        cells = paste0(dir, "/barcodes.tsv.gz"), 
+        feature.column = 1)
+write10xCounts("filtered_feature_bc_matrix.h5", filter_matrix, type = "HDF5",
+               genome = "hg38", version = "3", overwrite = TRUE,
+               gene.id = rownames(filter_matrix),
+               gene.symbol = rownames(filter_matrix))
+CID44971.obj <- Load10X_Spatial(data.dir = "filtered_feature_bc_matrix")
+Assays(CID44971.obj)
+vln.plot <- VlnPlot(CID44971.obj, features = "nCount_Spatial", pt.size = 0) + theme(axis.text = element_text(size = 4)) + NoLegend()
+count.plot <- SpatialFeaturePlot(CID44971.obj , features = "nCount_Spatial") + theme(legend.position = "right")
+vln.plot | count.plot
 ###
+
+
+
 
 
 
 #find what makes similar cells different from each other
 #join_layers_cid <- JoinLayers(cluster_harmony_cid)
 #c11_markers <- FindMarkers(join_layers_cid, ident.1 = 11)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
