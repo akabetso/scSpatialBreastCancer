@@ -12,7 +12,10 @@ library(grid)
 library(patchwork)
 library(infercnv)
 library(future)
-plan("multisession", workers = 10)
+library(hdf5r)
+library(Matrix)
+library(rhdf5)
+library(DropletUtils)
 library(ggplot2)
 
 
@@ -169,6 +172,8 @@ ggsave(filename = "subset_5/integrated/top_marker_cluster.png", plot = top_marke
 new_cluster_ids <- c("T-cells", "Dendric cells", "Endometrial stromal cells", "NK-cells", "Basal cells",
                      "Macrophages", "Fibroblast", "smooth muscles", "Endothelial cells", "B-cells", "Plasma cells", "Platelates")
 names(new_cluster_ids) <- levels(cid_integrated)
+top_marker_vln_plot <- VlnPlot(cid_integrated, features = top.markers)
+ggsave(filename = "subset_5/integrated/top_marker_vln_plot.png", plot = top_marker_vln_plot)
 #names(new_cluster_ids) <- NULL
 #cid_integrated <- NULL
 cid_integrated <- RenameIdents(cid_integrated, new_cluster_ids)
@@ -190,17 +195,25 @@ ggsave(filename = "subset_5/integrated/endometrial_CID_3586_vs_3946.png", plot =
 
 
 #annotate inferCNV file text
-infercnv_file <- data.frame(cell = colnames(cid_integrated), group = "unknown")
-write.table(infercnv_file, file = "infercnv_file.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
+threshold <- 0.5
+#infercnv_file <- data.frame(cell = colnames(cid_integrated), group = c("Unknown", "Immune"))
+immune_genes <- c("MS4A1", "VPREB3", "CD3D", "GNLY", "TNF", "CCR7", "CD68")
+DefaultAssay(cid_integrated) <- "integrated"
+cid_integrated$immune <- apply(cid_integrated@assays$RNA$counts[immune_genes, ], 2, function(x) any(x > threshold)) #get features counts
+cid_integrated$annotaion <- ifelse(cid_integrated$immune == TRUE, "Immune", "Unknown") #define cells (logical)
+infer_file <- data.frame(cell = colnames(cid_integrated), group = cid_integrated$annotaion) #make df and save 
+write.table(infer_file, file = "infercnv_file.txt", sep = "\t", row.names = FALSE, quote = FALSE)
 #get expresion matrix for infercnv
-expr_matrix <- GetAssayData(cid_integrated, layer = "counts")
-write.table(as.matrix(expr_matrix), file = "expresion_matrix.txt", sep = "\t", quote = FALSE, row.names = TRUE, col.names = TRUE)
+filtered_cells_maitrix <- colnames(cid_integrated)[cid_integrated@meta.data$immune == TRUE] #subset cells from annotation file only (logical)
+expr_matrix <- GetAssayData(cid_integrated, assay = "RNA", layer = "counts")[, filtered_cells_maitrix] #get the cells (non logical)
+#expr_matrix <- GetAssayData(cid_integrated, layer = "counts")
+write.table(as.matrix(expr_matrix), file = "expresion_matrix.txt", sep = "\t", quote = FALSE, row.names = TRUE, col.names = TRUE) #save matrix subset
 # create the infercnv object
 infercnv_obj = CreateInfercnvObject(raw_counts_matrix="data/expresion_matrix.txt",
                                     annotations_file="data/infercnv_file.txt",
                                     delim="\t",
                                     gene_order_file="data/hg38_gencode_v27.txt",
-                                    ref_group_names=c("unknown"))
+                                    ref_group_names=c("Immune"))
 # perform infercnv operations to reveal cnv signal
 infercnv_obj = infercnv::run(infercnv_obj,
                              cutoff = 0.1,  # use 1 for smart-seq, 0.1 for 10x-genomics
@@ -213,10 +226,6 @@ infercnv_obj = infercnv::run(infercnv_obj,
                         
 #spatial transcriptomics
 dir = "filtered_feature_bc_matrix"
-library(hdf5r)
-library(Matrix)
-library(rhdf5)
-library(DropletUtils)
 filter_matrix <- ReadMtx(
         mtx = paste0(dir, "/matrix.mtx.gz"), 
         features = paste0(dir, "/features.tsv.gz"), 
@@ -231,6 +240,9 @@ Assays(CID44971.obj)
 vln.plot <- VlnPlot(CID44971.obj, features = "nCount_Spatial", pt.size = 0) + theme(axis.text = element_text(size = 4)) + NoLegend()
 count.plot <- SpatialFeaturePlot(CID44971.obj , features = "nCount_Spatial") + theme(legend.position = "right")
 vln.plot | count.plot
+
+
+
 ###
 
 
