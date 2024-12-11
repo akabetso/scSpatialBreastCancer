@@ -198,16 +198,14 @@ ggsave(filename = "subset_5/integrated/endometrial_CID_3586_vs_3946.png", plot =
 threshold <- 0.5
 #infercnv_file <- data.frame(cell = colnames(cid_integrated), group = c("Unknown", "Immune"))
 immune_genes <- c("MS4A1", "VPREB3", "CD3D", "GNLY", "TNF", "CCR7", "CD68")
-DefaultAssay(cid_integrated) <- "integrated"
+DefaultAssay(cid_integrated) <- "RNA"
 cid_integrated$immune <- apply(cid_integrated@assays$RNA$counts[immune_genes, ], 2, function(x) any(x > threshold)) #get features counts
 cid_integrated$annotaion <- ifelse(cid_integrated$immune == TRUE, "Immune", "Unknown") #define cells (logical)
 infer_file <- data.frame(cell = colnames(cid_integrated), group = cid_integrated$annotaion) #make df and save 
-write.table(infer_file, file = "infercnv_file.txt", sep = "\t", row.names = FALSE, quote = FALSE)
+write.table(infer_file, file = "infercnv_file.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 #get expresion matrix for infercnv
-filtered_cells_maitrix <- colnames(cid_integrated)[cid_integrated@meta.data$immune == TRUE] #subset cells from annotation file only (logical)
-expr_matrix <- GetAssayData(cid_integrated, assay = "RNA", layer = "counts")[, filtered_cells_maitrix] #get the cells (non logical)
-#expr_matrix <- GetAssayData(cid_integrated, layer = "counts")
-write.table(as.matrix(expr_matrix), file = "expresion_matrix.txt", sep = "\t", quote = FALSE, row.names = TRUE, col.names = TRUE) #save matrix subset
+expression_matrix <- GetAssayData(cid_integrated, assay = "RNA", layer = "counts")
+write.table(as.matrix(expression_matrix), file = "expresion_matrix.txt", sep = "\t", quote = FALSE, row.names = TRUE, col.names = TRUE) #save matrix subset
 # create the infercnv object
 infercnv_obj = CreateInfercnvObject(raw_counts_matrix="data/expresion_matrix.txt",
                                     annotations_file="data/infercnv_file.txt",
@@ -222,7 +220,16 @@ infercnv_obj = infercnv::run(infercnv_obj,
                              denoise = T,
                              HMM = T
                              )
+#troubleshoot matrix
+num_cells <- ncol(data_matrix)
+num_cells_unfiltered <- nrow(infer_file)
+print(num_cells)
+print(num_cells_unfiltered)
 
+#find keyword CID3586_GATCGATAGTAGATGT,CID3586_GATCGTAGTATTACCG,CID3586_GATGCTACAGCATGAG,CID3586_GATGCTATCGGCGCTA,CID3586_GCAATCATCCGCATCT
+data_matrix <- read.table("data/expresion_matrix.txt", header = TRUE, sep = "\t")
+keyword <- data_matrix[grepl("CID3586_GCAATCATCCGCATCT", data_matrix[[1]]), ]
+print(keyword)
                         
 #spatial transcriptomics
 dir = "filtered_feature_bc_matrix"
