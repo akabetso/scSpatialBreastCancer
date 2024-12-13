@@ -20,6 +20,8 @@ library(ggplot2)
 
 
 #process and scale data at once
+dir.create("subset_3")
+dir.create("data/subset_3")
 sample_dir <- list.files(path = "data", pattern = "CID", full.names = TRUE)
 sample_dir
 cid <- list()
@@ -40,7 +42,7 @@ merged_cid <- merge(cid[[1]],
 
 merged_cid[["percent.mt"]] <- PercentageFeatureSet(merged_cid, pattern = "^MT-")
 quality_control_one <- VlnPlot(merged_cid, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-ggsave(filename = "subset_5/quality_control.png", plot = quality_control_one, width = 20, height = 6, dpi = 300)
+ggsave(filename = "subset_3/quality_control.png", plot = quality_control_one, width = 20, height = 6, dpi = 300)
 filtered_cid <- subset(merged_cid, subset = nFeature_RNA > 200 & nCount_RNA > 250 & percent.mt < 20)
 
 #let's rather use sctransform for normalization
@@ -69,16 +71,16 @@ sct_cid <- SCTransform(filtered_cid, vars.to.regress = "percent.mt", variable.fe
 sct_cid <- RunPCA(sct_cid, npcs = 30, verbose = FALSE)
 sct_cid@reductions
 pca_plot <- DimPlot(sct_cid, reduction = "pca", group.by="orig.ident")
-ggsave(filename = "subset_5/unintegrated/pca.png", plot = pca_plot)
+ggsave(filename = "subset_3/unintegrated/pca.png", plot = pca_plot)
 elbow_plot <- ElbowPlot(sct_cid)
-png("subset_5/unintegrated/elbow_plot.png")
+png("subset_3/unintegrated/elbow_plot.png")
 print(elbow_plot)
 dev.off()
 
 #dimensonal reduction owith umap
 sct_cid <- RunUMAP(sct_cid, reductions = "pca", dims = 1:20)
 umap_plot <- DimPlot(sct_cid, reduction = "umap", group.by = "orig.ident")
-ggsave(filename = "subset_5/unintegrated/umap_plot.png", plot = umap_plot)
+ggsave(filename = "subset_3/unintegrated/umap_plot.png", plot = umap_plot)
 
 #Let's find cluster or communities
 #cluster_cid <- FindNeighbors(filtered_cid, dims = 1:15)
@@ -116,14 +118,14 @@ cid_integrated <- IntegrateData(anchorset = cid_anchors, normalization.method = 
 cid_integrated <- ScaleData(cid_integrated, verbose = FALSE)
 cid_integrated <- RunPCA(cid_integrated, npcs = 30, verbose = FALSE)
 pca_plot_intd <- DimPlot(cid_integrated, reduction = "pca", group.by = "orig.ident")
-ggsave(filename = "subset_5/integrated/pca.png", plot = pca_plot_intd)
+ggsave(filename = "subset_3/integrated/pca.png", plot = pca_plot_intd)
 elbow_plot <- ElbowPlot(cid_integrated)
-png("subset_5/integrated/elbow_plot.png")
+png("subset_3/integrated/elbow_plot.png")
 print(elbow_plot)
 dev.off()
 cid_integrated <- RunUMAP(cid_integrated, reduction = "pca", dims = 1:18, n.neighbors = 10)
 umap_plot <- DimPlot(cid_integrated, reduction = "umap", group.by = "orig.ident")
-ggsave(filename = "subset_5/integrated/umap_plot.png", plot = umap_plot)
+ggsave(filename = "subset_3/integrated/umap_plot.png", plot = umap_plot)
 
 #Harmony
 #harmony_cid <- IntegrateLayers(object = filtered_cid, method = HarmonyIntegration, orig.reduction = "pca", new.reduction = 'harmony', verbose = FALSE)
@@ -150,37 +152,37 @@ DefaultAssay(cid_integrated) <- "integrated"
 cid_integrated <- FindNeighbors(cid_integrated, dims = 1:10)
 cid_integrated <- FindClusters(cid_integrated, resolution = 0.4, algorithm = 2)
 umap_plot <- DimPlot(cid_integrated, reduction = "umap", label = TRUE)
-ggsave(filename = "subset_5/integrated/cluster_louvain2_plot.png", plot = umap_plot)
+ggsave(filename = "subset_3/integrated/cluster_louvain2_plot.png", plot = umap_plot)
 
 
 #plot marker genes as described in the article
 DefaultAssay(cid_integrated) <- "SCT"
 features <- c("EPCAM", "MKI67", "CD3D", "CD68", "MS4A1", "JCHAIN", "PECAM1", "PDGFRB")
 marker_plot <- FeaturePlot(cid_integrated, features = features, pt.size = 0.1, label = TRUE)
-ggsave(filename = "subset_5/integrated/marker_expression_plot.png", plot = marker_plot)
+ggsave(filename = "subset_3/integrated/marker_expression_plot.png", plot = marker_plot)
 marker_vln_plot <- VlnPlot(cid_integrated, features = features)
-ggsave(filename = "subset_5/integrated/marker_vln_plot.png", plot = marker_vln_plot)
+ggsave(filename = "subset_3/integrated/marker_vln_plot.png", plot = marker_vln_plot)
 cid_integrated <- PrepSCTFindMarkers(cid_integrated)
 c3_markers <- FindMarkers(cid_integrated, ident.1 = 3)
 head(c3_markers)
 c3_marker_plot <- FeaturePlot(cid_integrated, reduction = "umap", features = rownames(head(c3_markers)), pt.size = 0.1)
-ggsave(filename = "subset_5/integrated/c3_marker_expression_plot.png", plot = c3_marker_plot)
+ggsave(filename = "subset_3/integrated/c3_marker_expression_plot.png", plot = c3_marker_plot)
 all_markers <- FindAllMarkers(cid_integrated, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 top.markers <- all_markers %>% group_by(cluster) %>% slice_max(n = 1, order_by = avg_log2FC) %>% pull(gene)
 top_markers_plot <- FeaturePlot(cid_integrated, features = top.markers, reduction = "umap")
-ggsave(filename = "subset_5/integrated/top_marker_cluster.png", plot = top_markers_plot)
+ggsave(filename = "subset_3/integrated/top_marker_cluster.png", plot = top_markers_plot)
 new_cluster_ids <- c("T-cells", "Dendric cells", "Endometrial stromal cells", "NK-cells", "Basal cells",
                      "Macrophages", "Fibroblast", "smooth muscles", "Endothelial cells", "B-cells", "Plasma cells", "Platelates")
 names(new_cluster_ids) <- levels(cid_integrated)
 top_marker_vln_plot <- VlnPlot(cid_integrated, features = top.markers)
-ggsave(filename = "subset_5/integrated/top_marker_vln_plot.png", plot = top_marker_vln_plot)
+ggsave(filename = "subset_3/integrated/top_marker_vln_plot.png", plot = top_marker_vln_plot)
 #names(new_cluster_ids) <- NULL
 #cid_integrated <- NULL
 cid_integrated <- RenameIdents(cid_integrated, new_cluster_ids)
 cluster_annotation <- DimPlot(cid_integrated, reduction = "umap", label = TRUE, pt.size = 0.5) + NoLegend()
-ggsave(filename = "subset_5/integrated/cluster_annotation_plot.png", plot = cluster_annotation)
+ggsave(filename = "subset_3/integrated/cluster_annotation_plot.png", plot = cluster_annotation)
 batch_tabulation <- table(Cluster = cid_integrated@active.ident, Batch = cid_integrated$orig.ident)
-png("subset_5/integrated/batch_tabulation_table.png")
+png("subset_3/integrated/batch_tabulation_table.png")
 grid.table(batch_tabulation)
 dev.off()
 #DEG
@@ -191,7 +193,7 @@ cid_integrated <- SetIdent(cid_integrated, value = "orig.ident")
 f1 <- FeaturePlot(subset(cid_integrated, idents = c("CID3586")), features = c("CXCL13")) + ggtitle("Sample: CID3586, Marker: CXCL13")
 f2 <- FeaturePlot(subset(cid_integrated, idents = c("CID3946")), features = c("CXCL13")) + ggtitle("Sample: CID3946, Marker: CXCL13")
 plot <- f1 + f2
-ggsave(filename = "subset_5/integrated/endometrial_CID_3586_vs_3946.png", plot = plot)
+ggsave(filename = "subset_3/integrated/endometrial_CID_3586_vs_3946.png", plot = plot)
 
 
 #annotate inferCNV file text
@@ -213,23 +215,24 @@ infercnv_obj = CreateInfercnvObject(raw_counts_matrix="data/expresion_matrix.txt
                                     gene_order_file="data/hg38_gencode_v27.txt",
                                     ref_group_names=c("Immune"))
 # perform infercnv operations to reveal cnv signal
+dir.create("data/subset_5")
 infercnv_obj = infercnv::run(infercnv_obj,
                              cutoff = 0.1,  # use 1 for smart-seq, 0.1 for 10x-genomics
-                             out_dir="subset_5", 
+                             out_dir = "data/subset_3", 
                              cluster_by_groups = T,   # cluster
                              denoise = T,
                              HMM = T
-                             )
+                             ) 
 #troubleshoot matrix
-num_cells <- ncol(data_matrix)
-num_cells_unfiltered <- nrow(infer_file)
-print(num_cells)
-print(num_cells_unfiltered)
+#num_cells <- ncol(data_matrix)
+#num_cells_unfiltered <- nrow(infer_file)
+#print(num_cells)
+#print(num_cells_unfiltered)
 
 #find keyword CID3586_GATCGATAGTAGATGT,CID3586_GATCGTAGTATTACCG,CID3586_GATGCTACAGCATGAG,CID3586_GATGCTATCGGCGCTA,CID3586_GCAATCATCCGCATCT
-data_matrix <- read.table("data/expresion_matrix.txt", header = TRUE, sep = "\t")
-keyword <- data_matrix[grepl("CID3586_GCAATCATCCGCATCT", data_matrix[[1]]), ]
-print(keyword)
+#data_matrix <- read.table("data/expresion_matrix.txt", header = TRUE, sep = "\t")
+#keyword <- data_matrix[grepl("CID3586_GCAATCATCCGCATCT", data_matrix[[1]]), ]
+#print(keyword)
                         
 #spatial transcriptomics
 dir = "filtered_feature_bc_matrix"
@@ -250,18 +253,14 @@ vln.plot | count.plot
 
 
 
-###
-
-
-
-
-
-
-#find what makes similar cells different from each other
-#join_layers_cid <- JoinLayers(cluster_harmony_cid)
-#c11_markers <- FindMarkers(join_layers_cid, ident.1 = 11)
-
-
+###genome = "hg38", version = "3", overwrite = TRUE,
+               gene.id = rownames(filter_matrix),
+               gene.symbol = rownames(filter_matrix))
+CID44971.obj <- Load10X_Spatial(data.dir = "filtered_feature_bc_matrix")
+Assays(CID44971.obj)
+vln.plot <- VlnPlot(CID44971.obj, features = "nCount_Spatial", pt.size = 0) + theme(axis.text = element_text(size = 4)) + NoLegend()
+count.plot <- SpatialFeaturePlot(CID44971.obj , features = "nCount_Spatial") + theme(legend.position = "right")
+vln.plot | count.plot
 
 
 
@@ -278,6 +277,14 @@ vln.plot | count.plot
 
 
 
+genome = "hg38", version = "3", overwrite = TRUE,
+               gene.id = rownames(filter_matrix),
+               gene.symbol = rownames(filter_matrix))
+CID44971.obj <- Load10X_Spatial(data.dir = "filtered_feature_bc_matrix")
+Assays(CID44971.obj)
+vln.plot <- VlnPlot(CID44971.obj, features = "nCount_Spatial", pt.size = 0) + theme(axis.text = element_text(size = 4)) + NoLegend()
+count.plot <- SpatialFeaturePlot(CID44971.obj , features = "nCount_Spatial") + theme(legend.position = "right")
+vln.plot | count.plot
 
 
 
