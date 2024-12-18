@@ -223,17 +223,114 @@ infercnv_obj = infercnv::run(infercnv_obj,
                              denoise = T,
                              HMM = T
                              ) 
-#troubleshoot matrix
-#num_cells <- ncol(data_matrix)
-#num_cells_unfiltered <- nrow(infer_file)
-#print(num_cells)
-#print(num_cells_unfiltered)
+# plot cnv
+#infercnv_plot <- plot_cnv(infercnv_obj, out_dir = "data/subset_3", obs_title = "Observation (Cells)", ref_title = "Reference (Cells)", cluster_by_groups = TRUE,
+#   x.center = 1, x.range = "auto", hclust_method = 'ward.D', color_safe_pal = FALSE, output_filename = "infercnv_plot", output_format = "png", png_res = 300, dynamic_resize = 0)
+infercnv_cell_plot <- DimPlot(cid_integrated, reduction = "umap", group.by = "annotaion", label = TRUE) + ggtitle("cluster by inferCNV") + theme_minimal()
+ggsave(filename = "subset_3/integrated/infercnv_celltype_plot.png", plot = infercnv_cell_plot)
 
-#find keyword CID3586_GATCGATAGTAGATGT,CID3586_GATCGTAGTATTACCG,CID3586_GATGCTACAGCATGAG,CID3586_GATGCTATCGGCGCTA,CID3586_GCAATCATCCGCATCT
-#data_matrix <- read.table("data/expresion_matrix.txt", header = TRUE, sep = "\t")
-#keyword <- data_matrix[grepl("CID3586_GCAATCATCCGCATCT", data_matrix[[1]]), ]
-#print(keyword)
-                        
+# Garnett Classifier
+# Extraact pretrain cell type from xCell2.
+library(xCell2)
+library(garnett)
+#library(monocle)
+library(monocle3)
+library(SeuratWrappers)
+library(org.Hs.eg.db)
+library(tidyr)
+dir.create("garnett_classifier")
+ref_url <- "https://dviraran.github.io/xCell2refs/references/PanCancer.xCell2Ref.rds" #download pre-trained ct
+local_filename <- "garnett_classifier/PanCancer.xCell2Ref.rds"
+download.file(ref_url, local_filename, mode = "wb")
+PanCancer.xCell2Ref <- readRDS(local_filename)
+slotNames(PanCancer.xCell2Ref)
+# We have classifier from cell, let's proceed with garnett
+classifier <- readRDS(local_filename)
+signatures <- PanCancer.xCell2Ref@signatures
+# convert seurat object to monocle celldataset
+#cid_cds <- importCDS(cid_integrated, import_all = TRUE)
+#cid_cds <- as.cell_data_set(cid_integrated) #convert to monocle cds
+expm <- cid_integrated@assays$RNA$counts
+#cells <- cid_integrated@meta.data
+#genes <- rownames(expm)
+#gene_metadata <- data.frame(gene_short_name = genes)
+#rownames(gene_metadata) <- genes
+#genes <- cid_integrated@assays$RNA$counts@Dimnames[[1]]
+#cid_cds <- new_cell_data_set(expm, cell_metadata = cells, gene_metadata = gene_metadata)
+#cid_cds <- estimate_size_factors(cid_cds)
+#cid_cds <- classify_cells(cid_cds, classifier, db = org.Hs.eg.db, cluster_extend = TRUE, cds_gene_id_type = "SYMBOL")
+##
+
+
+## Automatec classification with garnett.
+##
+simplified_name <- gsub("#.*", "", names(classifier@signatures))
+aggregated_markers <- list()
+for (i in seq_along(simplified_name)){
+    cell_type <- simplified_name[i]
+    markers <- classifier@signatures[[i]]
+    if (cell_type %in% names(aggregated_markers)){
+        aggregated_markers[[cell_type]] <- c(aggregated_markers[[cell_type]], markers)
+    } else {
+        aggregated_markers[[cell_type]] <- markers
+    }
+}
+aggregated_markers <- lapply(aggregated_markers, unique)
+PanCancer_celltype <- data.frame(
+    CellType = rep(names(aggregated_markers), sapply(aggregated_markers, length)),
+    marker = unlist(aggregated_markers)
+)
+write.csv(PanCancer_celltype, "garnett_classifier/PanCancer_celltype_ref.csv", row.names = FALSE)
+# generating a marker file.
+output <- "garnett_classifier/garnett_marker_file.txt"
+file_conn <- file(output, "w")
+for (cell_type in names(aggregated_markers)){
+    cell_type_format <- gsub(",", "", cell_type) #format cell type lines
+    cat(paste0(">", cell_type_format, "\n"), file = file_conn)
+    cat("expressed: ", paste(aggregated_markers[[cell_type]][1:9], collapse = ", "), "\n", file = file_conn)
+}
+close(file_conn)
+# check marker
+marker_file_path <- "garnett_classifier/garnett_marker_file.txt"
+marker_check <- check_markers(cid_cds, marker_file_path, db = org.Hs.eg.db, cds_gene_id_type = "SYMBOL", marker_file_gene_id_type = "SYMBOL")
+garnett_markers <- plot_markers(marker_check)
+ggsave("garnett_classifier/garnett_marker_plot.png", garnett_markers)
+#saveRDS(cid_integrated, file = "cid_integrated.rds")
+#cid_integrated <- readRDS("cid_integrated.rds")
+# train classifier
+set.seed(260)
+filtered_checked_markers <- marker_check[marker_check$ambiguity <= 0.25, ]
+filtered_checked_markers <- marker_check[marker_check$ambiguity <= 0.25, ]
+PanCancer_classifier <- train_cell_classifier(cds = cid_cds,
+    marker_file = "garnett_classifier/garnett_marker_file.txt",
+    db = org.Hs.eg.db,
+    cds_gene_id_type = "SYMBOL",
+    num_unknown = 50,
+    marker_file_gene_id_type = "SYMBOL"
+)
+feature_genes <- get_feature_genes(PanCancer_classifier, node = "root", db = org.Hs.eg.db, convert_ids = TRUE)
+head(feature_genes)
+## Now let's proceed to cell classification
+pdata <- cid_integrated@meta.data
+rownames(pdata) <- colnames(expm)
+fdata <- data.frame(gene_short_name = rownames(expm))
+rownames(fdata) <- rownames(expm)
+pd <- new("AnnotatedDataFrame", data = pdata)
+fd <- new("AnnotatedDataFrame", data = fdata)
+cid_cds <- newCellDataSet(as(expm, "dgCMatrix"), phenoData = pd, featureData = fd, lowerDetectionLimit = 0.1, expressionFamily = negbinomial.size())
+cid_cds <- estimateSizeFactors(cid_cds)
+cid_cds_classified <- classify_cells(cid_cds, PanCancer_classifier, db = org.Hs.eg.db, cluster_extend = TRUE, cds_gene_id_type = "SYMBOL")
+table(pData(cid_cds_classified)$cell_type)
+table(pData(cid_cds_classified)$cluster_ext_type)
+# all looking good, continue with clustring based on garnett classification
+cid_cds_classified <- preprocess_cds(cid_cds_classified, num_dim = 150)
+
+
+
+
+
+
+
 #spatial transcriptomics
 dir = "filtered_feature_bc_matrix"
 filter_matrix <- ReadMtx(

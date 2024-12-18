@@ -1,0 +1,50 @@
+>B cell
+expressed:  CD79A, CD37, CD79B, VPREB3, SMIM14, ADAM28, ORAI2, TNFRSF13C, LINC00926 
+>CD4-positive alpha-beta T cell
+expressed:  RPS27, RPS15A, RPS3, IL32, CD3D, KLRB1, CD2, IL7R, CD3E 
+>CD8-positive alpha-beta T cell
+expressed:  CCL5, NKG7, CST7, CTSW, CD8A, KLRD1, CD8B, LAG3, GNLY 
+>Cancer Associated Fibroblasts
+expressed:  COL1A1, COL1A2, FN1, FBLN1, COL6A2, SERPING1, CTHRC1, MMP2, PCOLCE 
+>Exhausted CD8+ T cells
+expressed:  CD8A, APOBEC3G, LAG3, CLEC2D, RBPJ, TNFRSF9, HAVCR2, APOBEC3C, KRT86 
+>conventional dendritic cell
+expressed:  CD74, HLA-DPB1, HLA-DPA1, HLA-DQB1, HLA-DQA1, CD1C, CLEC10A, CD1E, CSF2RA 
+>dendritic cell
+expressed:  CD74, HLA-DPB1, HLA-DPA1, HLA-DQB1, HLA-DQA1, GPR183, CD1C, CLEC10A, CD1E 
+>effector memory CD4-positive alpha-beta T cell
+expressed:  RPS27, RPLP2, CCL5, IL32, CXCR4, CD52, GZMA, RORA, KLRB1 
+>effector memory CD8-positive alpha-beta T cell
+expressed:  CCL5, NKG7, GZMA, CTSW, CD8A, KLRD1, CD8B, CMC1, GNLY 
+>endothelial cell
+expressed:  FKBP1A, CLDN5, RAMP2, SPRY1, SLC9A3R2, INSR, ENG, FLT1, CCDC85B 
+>epithelial cell
+expressed:  GSTP1, CAPS, TPPP3, PRDX5, DYNLL1, C9orf24, TUBB4B, CIB1, HMGN3 
+>fibroblast
+expressed:  PTGDS, FOS, JUN, HSPA1A, JUNB, HSPA1B, DNAJB1, DUSP1, IGFBP5 
+>glial cell
+expressed:  VIM, S100B, LGALS1, IFITM3, IFI27, IFI6, CRYAB, QKI, ISG15 
+>macrophage
+expressed:  FTL, APOE, SPP1, APOC1, C1QB, C1QA, PSAP, NPC2, C1QC 
+>malignant cell
+expressed:  KRT19, S100P, KRT8, EPCAM, ATP1B1, MUC1, SERINC2, RAB25, STARD10 
+>mast cell
+expressed:  HPGD, SAMSN1, GATA2, VWA5A, LTC4S, KIT, NSMCE1, MAOB, ACSL4 
+>monocyte
+expressed:  S100A9, S100A8, LST1, FCN1, MNDA, CSTA, TKT, LAMTOR4, CFP 
+>naive thymus-derived CD4-positive alpha-beta T cell
+expressed:  RPS12, RPL32, RPS27A, RPS15A, RPS14, RPS3, RPS13, RPL35A, LDHB 
+>naive thymus-derived CD8-positive alpha-beta T cell
+expressed:  EEF1A1, RPL10, RPS18, RPL13, RPS12, RPL32, RPS6, RPS27A, RPS15A 
+>natural killer cell
+expressed:  GNLY, NKG7, KLRB1, CTSW, KLRD1, CMC1, HOPX, CD247, KRT86 
+>oligodendrocyte
+expressed:  CADM2, LSAMP, ZBTB20, NPAS3, PCDH9, KCND2, PLCB1, CTNND2, MAML2 
+>plasmablast
+expressed:  SSR4, MZB1, HERPUD1, XBP1, CYBA, HSP90B1, DERL3, FKBP11, CD79A 
+>plasmacytoid dendritic cell human
+expressed:  GZMB, GPR183, IRF7, PLAC8, IRF8, C12orf75, TSPAN13, PLD4, LILRA4 
+>regulatory T cell
+expressed:  IL32, TNFRSF4, TNFRSF18, BATF, SPOCK2, IL2RA, CORO1B, ICOS, UGP2 
+>smooth muscle cell
+expressed:  TAGLN, RGS5, MYL6, TPM2, TIMP3, ADIRF, DSTN, FLNA, PPP1R14A 
